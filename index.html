@@ -1,0 +1,230 @@
+<!--
+Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+PDX-License-Identifier: MIT-0 (For details, see https://github.com/awsdocs/amazon-rekognition-developer-guide/blob/master/LICENSE-SAMPLECODE.)
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="aws-cognito-sdk.min.js"></script>
+    <script src="amazon-cognito-identity.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.679.0.min.js"></script>
+    <script src="./app.js"></script>
+    <meta charset="UTF-8" />
+    <title>Rekognition</title>
+  </head>
+
+  <body>
+    <h1>Age Estimator</h1>
+    <input type="file" name="fileToUpload" id="fileToUpload" accept="image/*" />
+    <div id="orgImg" style="display: none;"></div>
+    <hr />
+    <p id="idResult"></p>
+    <p id="opResult"></p>
+    <canvas id="canvas"></canvas>
+    <!-- <canvas id="canvas" width="1200" height="1000"></canvas> -->
+  </body>
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    var image = new Image();
+    var boxes = [];
+    image.onload = function () {
+      var orgImg = document.getElementById("source");
+      //   var orgImgWidth = orgImg.clientWidth;
+      //   var orgImgHeight = orgImg.clientHeight;
+      ctx.canvas.width = orgImg.naturalWidth;
+      ctx.canvas.height = orgImg.naturalHeight;
+      //   ctx.canvas.width = window.innerWidth;
+      //   ctx.canvas.height = window.innerHeight;
+      //   const left = boxes[0].Left * window.innerWidth;
+      //   const width = boxes[0].Width * window.innerWidth;
+      //   const top = boxes[0].Top * window.innerHeight;
+      //   const height = boxes[0].Heigth * window.innerHeight;
+      ctx.drawImage(image, 0, 0);
+      //   ctx.beginPath();
+      //   ctx.lineWidth = "2";
+      //   ctx.strokeStyle = "red";
+      //   ctx.rect(left, top, width, height);
+      //   //   ctx.rect(20, 20, 150, 100);
+      //   ctx.stroke();
+    };
+    // const canvas2 = document.getElementById("canvas2");
+    // const ctx2 = canvas2.getContext("2d");
+    // const image2 = document.getElementById("source2");
+
+    // image2.addEventListener("load", (e) => {
+    //   console.log("image2: ", image2);
+    //   ctx2.drawImage(image2, 0, 0);
+    //   ctx2.beginPath();
+    //   ctx2.lineWidth = "2";
+    //   ctx2.strokeStyle = "red";
+    //   ctx2.rect(20, 20, 150, 100);
+    //   ctx2.stroke();
+    //   ctx.drawImage(image2, 0, 0);
+    // });
+    document.getElementById("fileToUpload").addEventListener(
+      "change",
+      function (event) {
+        document.getElementById("opResult").innerHTML = "🧐🧐🧐 !!!";
+        document.getElementById("idResult").innerHTML = "🤔🤔🤔 ???";
+        ProcessImage();
+      },
+      false
+    );
+    function ShowOrgImage(imageData) {
+      //   console.log(image);
+      var image = `<img id="source" src=${imageData}>`;
+
+      document.getElementById("orgImg").innerHTML = image;
+    }
+    function ShowProcessImage(imageString) {
+      image.src = imageString;
+    }
+    //Calls DetectFaces API and shows estimated ages of detected faces
+    function DetectFaces(imageData) {
+      AWS.region = "us-east-1";
+      var rekognition = new AWS.Rekognition();
+      var params = {
+        Image: {
+          Bytes: imageData,
+        },
+        Attributes: ["ALL"],
+      };
+      boxes = [];
+      rekognition.detectFaces(params, function (err, data) {
+        if (err) console.log(err, err.stack);
+        // an error occurred
+        else {
+          var table = "<table><tr><th>Low</th><th>High</th></tr>";
+          // show each face and build out estimated age table
+          for (var i = 0; i < data.FaceDetails.length; i++) {
+            // console.log(data.FaceDetails[i].BoundingBox);
+            boxes.push(data.FaceDetails[i].BoundingBox);
+            table +=
+              "<tr><td>" +
+              data.FaceDetails[i].AgeRange.Low +
+              "</td><td>" +
+              data.FaceDetails[i].AgeRange.High +
+              "</td></tr>";
+          }
+          table += "</table>";
+          document.getElementById("opResult").innerHTML = table;
+        }
+      });
+    }
+    function RecognizeCelebrities(imageData) {
+      AWS.region = "us-east-1";
+      var rekognition = new AWS.Rekognition();
+      var params = {
+        Image: {
+          Bytes: imageData,
+        },
+      };
+      rekognition.recognizeCelebrities(params, function (err, data) {
+        if (err) console.log(err, err.stack);
+        // an error occurred
+        else {
+          //   console.log(data);
+          var table = "<table><tr><th>ID</th><th>Name</th></tr>";
+          // show each face and build out estimated age table
+          for (var i = 0; i < data.CelebrityFaces.length; i++) {
+            table +=
+              "<tr><td>" +
+              data.CelebrityFaces[i].Id +
+              "</td><td>" +
+              data.CelebrityFaces[i].Name +
+              "</td></tr>";
+          }
+          table += "</table>";
+          document.getElementById("idResult").innerHTML = table;
+          console.log(boxes);
+          var orgImg = document.getElementById("source");
+          //   var orgImgWidth = orgImg.clientWidth;
+          //   var orgImgHeight = orgImg.clientHeight;
+          var orgImgWidth = orgImg.naturalWidth;
+          var orgImgHeight = orgImg.naturalHeight;
+          ctx.beginPath();
+          ctx.lineWidth = "2";
+          ctx.strokeStyle = "red";
+          boxes.forEach((box) => {
+            let left = box.Left * orgImgWidth;
+            let width = box.Width * orgImgWidth;
+            let top = box.Top * orgImgHeight;
+            let height = box.Height * orgImgHeight;
+            ctx.rect(left, top, width, height);
+          });
+
+          //   let left = boxes[0].Left * orgImgWidth;
+          //   let width = boxes[0].Width * orgImgWidth;
+          //   let top = boxes[0].Top * orgImgHeight;
+          //   let height = boxes[0].Height * orgImgHeight;
+          //   console.log("left", left);
+          //   console.log("width", width);
+          //   console.log("top", top);
+          //   console.log("height", height);
+          //   ctx.rect(left, top, width, height);
+          //   ctx.rect(20, 20, 150, 100);
+          ctx.stroke();
+        }
+      });
+    }
+    //Loads selected image and unencodes image bytes for Rekognition DetectFaces API
+    function ProcessImage() {
+      AnonLog();
+      var control = document.getElementById("fileToUpload");
+      var file = control.files[0];
+
+      // Load base64 encoded image
+      var reader = new FileReader();
+      reader.onload = (function (theFile) {
+        return function (e) {
+          var img = document.createElement("img");
+          var image = null;
+          img.src = e.target.result;
+          var jpg = true;
+          try {
+            image = atob(e.target.result.split("data:image/jpeg;base64,")[1]);
+          } catch (e) {
+            jpg = false;
+          }
+          if (jpg == false) {
+            try {
+              image = atob(e.target.result.split("data:image/png;base64,")[1]);
+            } catch (e) {
+              alert("Not an image file Rekognition can process");
+              return;
+            }
+          }
+          //unencode image bytes for Rekognition DetectFaces API
+          var length = image.length;
+          imageBytes = new ArrayBuffer(length);
+          var ua = new Uint8Array(imageBytes);
+          for (var i = 0; i < length; i++) {
+            ua[i] = image.charCodeAt(i);
+          }
+          ShowOrgImage(e.target.result);
+          ShowProcessImage(e.target.result);
+          //Call Rekognition
+          DetectFaces(imageBytes);
+          RecognizeCelebrities(imageBytes);
+        };
+      })(file);
+      reader.readAsDataURL(file);
+    }
+    //Provides anonymous log on to AWS services
+    function AnonLog() {
+      // Configure the credentials provider to use your identity pool
+      AWS.config.region = "us-east-1"; // Region
+      AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+        IdentityPoolId: "us-east-1:51e6ab1f-8415-45a7-ac82-44591960d1e2",
+      });
+      // Make the call to obtain credentials
+      AWS.config.credentials.get(function () {
+        // Credentials will be available when this function is called.
+        var accessKeyId = AWS.config.credentials.accessKeyId;
+        var secretAccessKey = AWS.config.credentials.secretAccessKey;
+        var sessionToken = AWS.config.credentials.sessionToken;
+      });
+    }
+  </script>
+</html>
